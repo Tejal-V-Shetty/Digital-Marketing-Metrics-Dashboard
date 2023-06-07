@@ -1,6 +1,7 @@
 # Code for the dashboard
 ## Versions and features
 ### Version 1
+Data read from the platform and written to an external Excel sheet, without any calculated metrics.
 
 ### Version 2
 
