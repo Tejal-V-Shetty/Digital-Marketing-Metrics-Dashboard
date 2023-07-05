@@ -34,6 +34,7 @@ limits_sheet=pandas.DataFrame()
 Metrics_list={'Facebook':['Day','Campaign name','Ad set name','Ad name','Impressions','Link clicks','Adds of payment info','Amount spent (USD)'],
               'Snapchat':['Start Time','Campaign Name','Ad Set Name','Ad Name','Paid Impressions','Swipe-Ups','Purchases','Amount Spent'],
               'Tiktok':['Date','Campaign name','Ad Group Name','Ad Name','Impression','Clicks','Conversions','Cost']}
+Limits_colour_list={'CTR':['r','g','tab:olive'],'CPA':['tab:olive','g','r'],'CPM':['tab:olive','g','r']}
 
 XA_list=  ['Date','LI Name'      ,'Split Name'   ,'Creative Name','Imps'            ,'Clicks'        ,'Total Cost (USD)']
 AZ_list=  ['Date','Order'        ,'Line item'    ,'Creative'     ,'Impressions'     ,'Click-throughs','Total cost']
@@ -89,7 +90,8 @@ class Dash:
 
         self.filter_list = Text(self.root,height=100,width=80)#Holds a list of all the values that can be seen after applying the filter
         self.filter_list.place(relx=0.5,rely=0.25,anchor='nw')
-        
+
+        self.metric_limits = limits_sheet.set_index('Campaign type').to_dict('index')
         #Divide the data into groups
         self.grouper()
         
@@ -125,11 +127,20 @@ class Dash:
 
         self.fig = plt.figure()
         self.axs = seaborn.scatterplot(data=self.grp_list[self.grp_metric.get()],x=self.x_metric.get(),y=self.y_metric.get())
-        try:
-            self.axs.axvspan(limits_sheet[self.y_metric.get()+"_Lower"][0],limits_sheet[self.y_metric.get()+"_Upper"][0],facecolor='g',alpha=0.5)
+        try:    #Display limits for the selected metric along Y-axis as per pre-defined values
+            self.axs.axhspan(0,self.metric_limits[self.grp_metric.get()][self.y_metric.get()+"_Lower"],facecolor=Limits_colour_list[self.y_metric.get()][0],alpha=0.3)
+            self.axs.axhspan(self.metric_limits[self.grp_metric.get()][self.y_metric.get()+"_Lower"],self.metric_limits[self.grp_metric.get()][self.y_metric.get()+"_Upper"],facecolor=Limits_colour_list[self.y_metric.get()][1],alpha=0.3)
+            self.axs.axhspan(self.metric_limits[self.grp_metric.get()][self.y_metric.get()+"_Upper"],self.metric_limits[self.grp_metric.get()][self.y_metric.get()+"_Upper"]*2,facecolor=Limits_colour_list[self.y_metric.get()][2],alpha=0.3)
         except:
             pass
-        print(limits_sheet[self.y_metric.get()+"_Lower"][0])#limits_sheet[self.y_metric.get()+"_Lower"][0])#[self.grp_metric.get()])
+        
+        try:    #Display limits for the selected metric along X-axis as per pre-defined values
+            self.axs.axvspan(0,self.metric_limits[self.grp_metric.get()][self.x_metric.get()+"_Lower"],facecolor=Limits_colour_list[self.x_metric.get()][0],alpha=0.5)
+            self.axs.axvspan(self.metric_limits[self.grp_metric.get()][self.x_metric.get()+"_Lower"],self.metric_limits[self.grp_metric.get()][self.x_metric.get()+"_Upper"],facecolor=Limits_colour_list[self.x_metric.get()][1],alpha=0.5)
+            self.axs.axvspan(self.metric_limits[self.grp_metric.get()][self.x_metric.get()+"_Upper"],self.metric_limits[self.grp_metric.get()][self.x_metric.get()+"_Upper"]*2,facecolor=Limits_colour_list[self.x_metric.get()][2],alpha=0.5)
+        except:
+            pass
+        
         mplcursors.cursor(self.fig).connect("add", lambda sel: sel.annotation.set_text(self.annotation_maker(sel.index)))
         self.canvas = FigureCanvasTkAgg(self.fig.figure,master=self.root)
     
@@ -147,6 +158,19 @@ class Dash:
         self.fig = plt.gca()
         self.fig.clear()
         self.axs = seaborn.scatterplot(data=self.grp_list[self.grp_metric.get()],x=self.x_metric.get(),y=self.y_metric.get())
+        try:    #Display limits for the selected metric along Y-axis as per pre-defined values
+            self.axs.axhspan(0,self.metric_limits[self.grp_metric.get()][self.y_metric.get()+"_Lower"],facecolor=Limits_colour_list[self.y_metric.get()][0],alpha=0.5)
+            self.axs.axhspan(self.metric_limits[self.grp_metric.get()][self.y_metric.get()+"_Lower"],self.metric_limits[self.grp_metric.get()][self.y_metric.get()+"_Upper"],facecolor=Limits_colour_list[self.y_metric.get()][1],alpha=0.5)
+            self.axs.axhspan(self.metric_limits[self.grp_metric.get()][self.y_metric.get()+"_Upper"],self.metric_limits[self.grp_metric.get()][self.y_metric.get()+"_Upper"]*2,facecolor=Limits_colour_list[self.y_metric.get()][2],alpha=0.5)
+        except:
+            pass
+        
+        try:    #Display limits for the selected metric along X-axis as per pre-defined values
+            self.axs.axvspan(0,self.metric_limits[self.grp_metric.get()][self.x_metric.get()+"_Lower"],facecolor=Limits_colour_list[self.x_metric.get()][0],alpha=0.5)
+            self.axs.axvspan(self.metric_limits[self.grp_metric.get()][self.x_metric.get()+"_Lower"],self.metric_limits[self.grp_metric.get()][self.x_metric.get()+"_Upper"],facecolor=Limits_colour_list[self.x_metric.get()][1],alpha=0.5)
+            self.axs.axvspan(self.metric_limits[self.grp_metric.get()][self.x_metric.get()+"_Upper"],self.metric_limits[self.grp_metric.get()][self.x_metric.get()+"_Upper"]*2,facecolor=Limits_colour_list[self.x_metric.get()][2],alpha=0.5)
+        except:
+            pass
         
         try:
             mplcursors.cursor(self.fig).connect("add", lambda sel: sel.annotation.set_text(self.annotation_maker(sel.index)))
@@ -200,10 +224,12 @@ def calc_metrics():
     platform_sheet['CPA'] = (platform_sheet['Amount spent']/platform_sheet['Purchases'])*100
     platform_sheet['CPM'] = (platform_sheet['Amount spent']/platform_sheet['Impressions'])*1000
     platform_sheet['Campaign type'] = numpy.where(platform_sheet['Campaign name'].str.contains("AW"),"AW","PE")
-    
+    platform_sheet['Platform']=platform_sheet['Platform']+"_"+platform_sheet['Campaign type']
+    print(platform_sheet['Platform'])
     platform_metrics.append('CTR')
     platform_metrics.append('CPA')
     platform_metrics.append('CPM')
+    platform_metrics.append('Campaign type')
     
 def main():
     global limits_sheet
