@@ -23,7 +23,7 @@ platform_filters=['None','Platform','Date','Campaign name','Ad set name','Ad nam
 platform_metrics=['Impressions','Clicks','Purchases','Amount spent']
 
 grp_metric_list = []    #List of all the metrics that denominate the grouping parameters
-platform_files={'Facebook':'FB_data','Snapchat':'SC_data','Tiktok':'TT_data'}
+platform_files={'Facebook':'FB_data','Snapchat':'SC_data','Tiktok':'TT_data','GoogleAds':'GAds_data'}
 
 main_sheet=pandas.DataFrame(main_data)
 sales_sheet=pandas.DataFrame(sales)
@@ -33,8 +33,16 @@ limits_sheet=pandas.DataFrame()
 
 Metrics_list={'Facebook':['Day','Campaign name','Ad set name','Ad name','Impressions','Link clicks','Adds of payment info','Amount spent (USD)'],
               'Snapchat':['Start Time','Campaign Name','Ad Set Name','Ad Name','Paid Impressions','Swipe-Ups','Purchases','Amount Spent'],
-              'Tiktok':['Date','Campaign name','Ad Group Name','Ad Name','Impression','Clicks','Conversions','Cost']}
-Limits_colour_list={'CTR':['r','g','tab:olive'],'CPA':['tab:olive','g','r'],'CPM':['tab:olive','g','r']}
+              'Tiktok':['Date','Campaign name','Ad Group Name','Ad Name','Impression','Clicks','Conversions','Cost'],
+              'GoogleAds':['Day','Campaign','Ad group','Search keyword','Impr.','Clicks','Conversions','Cost']}
+
+Limits_colour_list={'CTR':['r','g','tab:olive'],
+                    'CPA':['tab:olive','g','r'],
+                    'CPM':['tab:olive','g','r'],
+                    'Amount spent':['tab:olive','g','tab:olive'],
+                    'CPC':['tab:olive','g','r']}
+Optimization_weights_CPM={'AW':0.5,'PE':0.2}
+Optimization_weights_CPA={'AW':0.0,'PE':0.5}
 
 XA_list=  ['Date','LI Name'      ,'Split Name'   ,'Creative Name','Imps'            ,'Clicks'        ,'Total Cost (USD)']
 AZ_list=  ['Date','Order'        ,'Line item'    ,'Creative'     ,'Impressions'     ,'Click-throughs','Total cost']
@@ -46,6 +54,16 @@ class Dash:
         self.sorted_data['CTR'] = (self.sorted_data['Clicks']/self.sorted_data['Impressions'])*100
         self.sorted_data['CPA'] = (self.sorted_data['Amount spent']/self.sorted_data['Purchases'])*100
         self.sorted_data['CPM'] = (self.sorted_data['Amount spent']/self.sorted_data['Impressions'])*1000
+        self.sorted_data['CPC'] = (self.sorted_data['Amount spent']/self.sorted_data['Clicks'])
+        print(self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPM_Lower']))
+        self.sorted_data['Optimization score_CPM']= (1-(abs(self.sorted_data['CPM']-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPM_Lower']))/(self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPM_Upper'])*2-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPM_Lower']))))*100
+        self.sorted_data['Optimization score_CTR']= (1-(abs(self.sorted_data['CTR']-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CTR_Lower']))/(self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CTR_Upper'])*2-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CTR_Lower']))))*100
+        self.sorted_data['Optimization score_CPA']= (1-(abs(self.sorted_data['CPA']-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPA_Lower']))/(self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPA_Upper'])*2-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPA_Lower']))))*100
+        self.sorted_data['Optimization score_CPC']= (1-(abs(self.sorted_data['CPC']-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPC_Lower']))/(self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPC_Upper'])*2-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPC_Lower']))))*100
+        
+        #self.sorted_data['Platform']
+        #+self.sorted_data['CPA']+self.sorted_data['CTR']
+        #1-(CPM-CPM_Lower)/(CPM_Upper*2-CPM_Lower)
         
     def grouper(self):  #Creates grouping based on selected parameter(Eg. Platform, Campaign name)
         global grp_metric_list
@@ -143,7 +161,8 @@ class Dash:
         
         mplcursors.cursor(self.fig).connect("add", lambda sel: sel.annotation.set_text(self.annotation_maker(sel.index)))
         self.canvas = FigureCanvasTkAgg(self.fig.figure,master=self.root)
-    
+        self.analysis_output()
+        
     def tk_axis_val_update(self):
         
         #Update labels
@@ -191,7 +210,13 @@ class Dash:
         self.canvas.draw()
         self.canvas.get_tk_widget().place(relx=0,rely=0.25,anchor='nw')#.pack()
         self.root.mainloop()
-
+        
+    def analysis_output(self):
+        with pandas.ExcelWriter('C:\\Users\\Tejal Shetty\\Documents\\Python programs\\Report files\\Analysis_output.xlsx') as writer:
+            #pandas.DataFrame(FB_list).to_excel(writer, sheet_name='Platform data', index=False, header=False)
+            self.sorted_data.to_excel(writer, sheet_name = 'Platform data', index = False)     # Write the data into the excel sheet with sorted data
+        print('\n\nWrite complete. Data stored in Analysis_output.xlsx')
+        
 def excel_writer():
     with pandas.ExcelWriter('C:\\Users\\Tejal Shetty\\Documents\\Python programs\\Report files\\Dashboard_op.xlsx') as writer:
         #pandas.DataFrame(FB_list).to_excel(writer, sheet_name='Platform data', index=False, header=False)
@@ -216,20 +241,24 @@ def data_entry(Platform):
     read_data = read_data[Metrics_list[Platform]]   #Arrange the data according to the list
     read_data.insert(0,'Platform',Platform) #Add column with platform name
     read_data.columns = platform_data     #Add the column names to the excel sheet
-    read_data['Date']=read_data['Date'].str.slice(0,10) #Get the correct date format - Mainly for Snapchat data as of FB,TT,SC implementation
+    try:
+        read_data['Date']=read_data['Date'].str.slice(0,10) #Get the correct date format - Mainly for Snapchat data as of FB,TT,SC implementation
+    except:
+        pass
     platform_sheet=pandas.concat([platform_sheet, read_data], ignore_index = True)  #Add read data to dataframe with all values
 
 def calc_metrics():
     platform_sheet['CTR'] = (platform_sheet['Clicks']/platform_sheet['Impressions'])*100
     platform_sheet['CPA'] = (platform_sheet['Amount spent']/platform_sheet['Purchases'])*100
     platform_sheet['CPM'] = (platform_sheet['Amount spent']/platform_sheet['Impressions'])*1000
+    platform_sheet['CPC'] = (platform_sheet['Amount spent']/platform_sheet['Clicks'])
     platform_sheet['Campaign type'] = numpy.where(platform_sheet['Campaign name'].str.contains("AW"),"AW","PE")
     platform_sheet['Platform']=platform_sheet['Platform']+"_"+platform_sheet['Campaign type']
-    print(platform_sheet['Platform'])
+
     platform_metrics.append('CTR')
     platform_metrics.append('CPA')
     platform_metrics.append('CPM')
-    platform_metrics.append('Campaign type')
+    platform_metrics.append('CPC')
     
 def main():
     global limits_sheet
@@ -237,11 +266,11 @@ def main():
     data_entry("Facebook")
     data_entry("Snapchat")
     data_entry("Tiktok")
+    data_entry("GoogleAds")
     
     limits_sheet=pandas.read_excel("C:\\Users\\Tejal Shetty\\Documents\\Python programs\\Report Files\\Training data limits_FandB.xlsx")
     calc_metrics()
     excel_writer()
     test = Dash()
     test.graph_rep()
-
 main()
