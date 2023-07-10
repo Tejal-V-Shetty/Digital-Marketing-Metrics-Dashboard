@@ -41,8 +41,6 @@ Limits_colour_list={'CTR':['r','g','tab:olive'],
                     'CPM':['tab:olive','g','r'],
                     'Amount spent':['tab:olive','g','tab:olive'],
                     'CPC':['tab:olive','g','r']}
-Optimization_weights_CPM={'AW':0.5,'PE':0.2}
-Optimization_weights_CPA={'AW':0.0,'PE':0.5}
 
 XA_list=  ['Date','LI Name'      ,'Split Name'   ,'Creative Name','Imps'            ,'Clicks'        ,'Total Cost (USD)']
 AZ_list=  ['Date','Order'        ,'Line item'    ,'Creative'     ,'Impressions'     ,'Click-throughs','Total cost']
@@ -55,15 +53,18 @@ class Dash:
         self.sorted_data['CPA'] = (self.sorted_data['Amount spent']/self.sorted_data['Purchases'])*100
         self.sorted_data['CPM'] = (self.sorted_data['Amount spent']/self.sorted_data['Impressions'])*1000
         self.sorted_data['CPC'] = (self.sorted_data['Amount spent']/self.sorted_data['Clicks'])
-        print(self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPM_Lower']))
-        self.sorted_data['Optimization score_CPM']= (1-(abs(self.sorted_data['CPM']-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPM_Lower']))/(self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPM_Upper'])*2-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPM_Lower']))))*100
-        self.sorted_data['Optimization score_CTR']= (1-(abs(self.sorted_data['CTR']-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CTR_Lower']))/(self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CTR_Upper'])*2-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CTR_Lower']))))*100
-        self.sorted_data['Optimization score_CPA']= (1-(abs(self.sorted_data['CPA']-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPA_Lower']))/(self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPA_Upper'])*2-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPA_Lower']))))*100
-        self.sorted_data['Optimization score_CPC']= (1-(abs(self.sorted_data['CPC']-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPC_Lower']))/(self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPC_Upper'])*2-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPC_Lower']))))*100
-        
-        #self.sorted_data['Platform']
-        #+self.sorted_data['CPA']+self.sorted_data['CTR']
-        #1-(CPM-CPM_Lower)/(CPM_Upper*2-CPM_Lower)
+
+        try:    #Optimization score - Values closer to 100 imply best performances
+            self.sorted_data['Optimization score_CPM']= (1-(abs(self.sorted_data['CPM']-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPM_Lower']))/(self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPM_Upper'])*2-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPM_Lower']))))*100
+            self.sorted_data['Optimization score_CTR']= (1-(abs(self.sorted_data['CTR']-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CTR_Lower']))/(self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CTR_Upper'])*2-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CTR_Lower']))))*100
+            self.sorted_data['Optimization score_CPA']= (1-(abs(self.sorted_data['CPA']-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPA_Lower']))/(self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPA_Upper'])*2-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPA_Lower']))))*100
+            self.sorted_data['Optimization score_CPC']= (1-(abs(self.sorted_data['CPC']-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPC_Lower']))/(self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPC_Upper'])*2-self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['CPC_Lower']))))*100
+            self.sorted_data['Optimization score_Overall'] = numpy.where(numpy.isnan(self.sorted_data['Optimization score_CPM']),0,self.sorted_data['Optimization score_CPM'])*self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['Score_weight_CPM'])\
+                                                            +numpy.where(numpy.isnan(self.sorted_data['Optimization score_CTR']),0,self.sorted_data['Optimization score_CTR'])*self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['Score_weight_CTR'])\
+                                                            +numpy.where(numpy.isnan(self.sorted_data['Optimization score_CPA']),0,self.sorted_data['Optimization score_CPC'])*self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['Score_weight_CPA'])\
+                                                            +numpy.where(numpy.isnan(self.sorted_data['Optimization score_CPC']),0,self.sorted_data['Optimization score_CPC'])*self.sorted_data['Platform'].map(lambda x : self.metric_limits[x]['Score_weight_CPC'])
+        except:
+            pass
         
     def grouper(self):  #Creates grouping based on selected parameter(Eg. Platform, Campaign name)
         global grp_metric_list
@@ -71,7 +72,7 @@ class Dash:
         self.sorted_data = platform_sheet.groupby(by=[self.grouping_metric.get(),self.filter_metric.get()],as_index = False)[platform_metrics].sum().reset_index()  #Groups by the particular grouping metric
         self.calc_metrics()
         print(self.sorted_data)
-        grp_metric_list = self.sorted_data[self.grouping_metric.get()].unique().tolist()
+        grp_metric_list = self.sorted_data[self.grouping_metric.get()].unique().tolist()    #Gets the new set of selectable items after grouping
         for groups in grp_metric_list:
             self.grp_list[groups]=self.sorted_data[self.sorted_data[self.grouping_metric.get()]== groups]
         print(grp_metric_list)
@@ -129,8 +130,11 @@ class Dash:
         self.grp_drop = OptionMenu(self.root, self.grp_metric, *grp_metric_list) #Dropdown to select option after grouping - Eg. Facebook, Snapchat
         self.grp_drop.place(relx=0.14,rely=0.05,anchor='w')
 
-        self.button_metrics=Button(self.root,text="Update metrics", command = self.tk_axis_val_update).place(relx=0.1,rely=0.2,anchor='w')
+        self.button_metrics=Button(self.root,text="Update metrics", command = self.tk_axis_val_update).place(relx=0.1,rely=0.2,anchor='w')#Buttons to update the grouping after selecting the parameters
         self.button_grouper=Button(self.root,text="Update grouping", command = self.grouper).place(relx=0.7,rely=0.05,anchor='w')
+
+        self.button_gen_output=Button(self.root,text="Export general report", command = self.general_analysis_output).place(relx=0.8,rely=0.05,anchor='w')#Button to export reports
+        self.button_page_output=Button(self.root,text="Export report for this grouping", command = self.analysis_output).place(relx=0.8,rely=0.1,anchor='w')
         
         self.labelx=Label(self.root, text="X axis : ")
         self.labelx.place(relx=0.1,rely=0.1,anchor='w')
@@ -161,7 +165,7 @@ class Dash:
         
         mplcursors.cursor(self.fig).connect("add", lambda sel: sel.annotation.set_text(self.annotation_maker(sel.index)))
         self.canvas = FigureCanvasTkAgg(self.fig.figure,master=self.root)
-        self.analysis_output()
+        
         
     def tk_axis_val_update(self):
         
@@ -210,12 +214,43 @@ class Dash:
         self.canvas.draw()
         self.canvas.get_tk_widget().place(relx=0,rely=0.25,anchor='nw')#.pack()
         self.root.mainloop()
-        
+
     def analysis_output(self):
-        with pandas.ExcelWriter('C:\\Users\\Tejal Shetty\\Documents\\Python programs\\Report files\\Analysis_output.xlsx') as writer:
-            #pandas.DataFrame(FB_list).to_excel(writer, sheet_name='Platform data', index=False, header=False)
-            self.sorted_data.to_excel(writer, sheet_name = 'Platform data', index = False)     # Write the data into the excel sheet with sorted data
-        print('\n\nWrite complete. Data stored in Analysis_output.xlsx')
+        file_name='C:\\Users\\Tejal Shetty\\Documents\\Python programs\\Report files\\Analysis_output_'+datetime.datetime.now().strftime('%d-%m--%Hh%Mm')+'.xlsx'
+        with pandas.ExcelWriter(file_name) as writer:
+            self.sorted_data.to_excel(writer, sheet_name = 'Consolidated data', index = False)     # Write the data into the excel sheet with sorted data
+        print('\n\nWrite complete. Data stored in Analysis_output sheet.')
+
+    def general_analysis_output(self):
+        grp_placeholder=self.grouping_metric.get()  #Store parameters so as to return them to the original value
+        filter_placeholder=self.filter_metric.get()
+        file_name='C:\\Users\\Tejal Shetty\\Documents\\Python programs\\Report files\\General_Analysis_'+datetime.datetime.now().strftime('%d-%m--%Hh%Mm')+'.xlsx'
+
+        with pandas.ExcelWriter(file_name) as writer:
+            self.grouping_metric.set("Platform")
+            self.filter_metric.set("Campaign name")
+            self.grouper()
+            self.sorted_data.to_excel(writer, sheet_name = 'Consolidated data', index = False)     #Platform - Campaign
+            
+            self.grouping_metric.set("Campaign name")
+            self.filter_metric.set("Ad set name")
+            self.grouper()
+            self.sorted_data.to_excel(writer, sheet_name = 'Ad set view', index = False)     #Campaign - Ad group
+            
+            self.grouping_metric.set("Campaign name")
+            self.filter_metric.set("Ad name")
+            self.grouper()
+            self.sorted_data.to_excel(writer, sheet_name = 'Ad view', index = False)     #Campaign - Ad
+            
+            self.grouping_metric.set("Date")
+            self.filter_metric.set("Platform")
+            self.grouper()
+            self.sorted_data.to_excel(writer, sheet_name = 'Daily breakdown', index = False)     #Date - Platform
+            
+        print('\n\nWrite complete. Data stored in General_analysis sheet.')
+        self.grouping_metric.set(grp_placeholder)   #Reset the parameters
+        self.filter_metric.set(filter_placeholder)
+        self.grouper()
         
 def excel_writer():
     with pandas.ExcelWriter('C:\\Users\\Tejal Shetty\\Documents\\Python programs\\Report files\\Dashboard_op.xlsx') as writer:
