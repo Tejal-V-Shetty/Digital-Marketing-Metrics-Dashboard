@@ -34,4 +34,6 @@ Calculated metrics added :
 
 Added class method to write the analysis output to an external file, on the basis of Platform-based grouping and Campaign-based filtering. The method will be updated to include other types of reports as well.
 
+Added class method to update the calculated metrics for the grouped and filtered data.
+
 ### Version 9
