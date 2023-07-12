@@ -36,4 +36,6 @@ Added class method to write the analysis output to an external file, on the basi
 
 Added class method to update the calculated metrics for the grouped and filtered data.
 
+Added a textbox to display the list of items once the filter has been applied, for the user's reference.
+
 ### Version 9
