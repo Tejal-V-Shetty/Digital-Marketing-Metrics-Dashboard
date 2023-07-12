@@ -287,6 +287,7 @@ def calc_metrics():
     platform_sheet['CPA'] = (platform_sheet['Amount spent']/platform_sheet['Purchases'])*100
     platform_sheet['CPM'] = (platform_sheet['Amount spent']/platform_sheet['Impressions'])*1000
     platform_sheet['CPC'] = (platform_sheet['Amount spent']/platform_sheet['Clicks'])
+    
     platform_sheet['Campaign type'] = numpy.where(platform_sheet['Campaign name'].str.contains("AW"),"AW","PE")
     platform_sheet['Platform']=platform_sheet['Platform']+"_"+platform_sheet['Campaign type']
 
@@ -308,4 +309,5 @@ def main():
     excel_writer()
     test = Dash()
     test.graph_rep()
+    
 main()
