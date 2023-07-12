@@ -30,7 +30,8 @@ Platforms added :
   - Google Ads
 
 Calculated metrics added :
-    - Cost per Click(CPC)
+  - Cost per Click(CPC)
+
 Added class method to write the analysis output to an external file, on the basis of Platform-based grouping and Campaign-based filtering. The method will be updated to include other types of reports as well.
 
 ### Version 9
