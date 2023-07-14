@@ -12,6 +12,11 @@ from tkinter import *
 from tkinter import ttk
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 import sklearn
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
+from dateutil.relativedelta import relativedelta
 
 #Example set to explain metrics, also the default values
 #Grouping: Platform-wise
@@ -20,7 +25,7 @@ main_data=[['Date', 'Total Sales - Total', 'Total Sales - In-store', 'Total Sale
 sales=[['Date','Store name','Total','In-store','Online','Total'],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]]
 
 platform_data=['Platform','Date','Campaign name','Ad set name','Ad name','Impressions','Clicks','Purchases','Amount spent']
-platform_filters=['None','Platform','Date','Campaign name','Ad set name','Ad name']
+platform_filters=['None','Platform','Date','Campaign name','Ad set name','Ad name','Month','Month_num']
 platform_metrics=['Impressions','Clicks','Purchases','Amount spent']
 
 grp_metric_list = []    #List of all the metrics that denominate the grouping parameters
@@ -37,15 +42,8 @@ Metrics_list={'Facebook':['Day','Campaign name','Ad set name','Ad name','Impress
               'Tiktok':['Date','Campaign name','Ad Group Name','Ad Name','Impression','Clicks','Conversions','Cost'],
               'GoogleAds':['Day','Campaign','Ad group','Search keyword','Impr.','Clicks','Conversions','Cost']}
 
-Limits_colour_list={'CTR':['r','g','tab:olive'],
-                    'CPA':['tab:olive','g','r'],
-                    'CPM':['tab:olive','g','r'],
-                    'Amount spent':['tab:olive','g','tab:olive'],
-                    'CPC':['tab:olive','g','r']}
-
 XA_list=  ['Date','LI Name'      ,'Split Name'   ,'Creative Name','Imps'            ,'Clicks'        ,'Total Cost (USD)']
 AZ_list=  ['Date','Order'        ,'Line item'    ,'Creative'     ,'Impressions'     ,'Click-throughs','Total cost']
-GAds_list=['Date','Campaign'     ,'Ad group'     ,'Impr.'        ,'Clicks'          ,'Conversions'   ,'Cost']
 
 class Dash:
     
@@ -81,7 +79,50 @@ class Dash:
         #Current annotation : Filter name + X_value + Y_value
         Annotation = self.grp_list[self.grp_metric.get()][self.filter_metric.get()][index]+"\n"+self.x_metric.get()+": "+str(self.grp_list[self.grp_metric.get()][self.x_metric.get()][index])+"\n"+self.y_metric.get()+": "+str(self.grp_list[self.grp_metric.get()][self.y_metric.get()][index])
         return Annotation
+    
+    def model_predict(self):
+        X = self.grp_list[self.grp_metric.get()][['CPM']]
+        y = self.grp_list[self.grp_metric.get()]['CTR']
+        print(X)
+        print(y)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5)
+        degree=4
+        poly_transformer = PolynomialFeatures(degree=degree)
+        X_train_poly = poly_transformer.fit_transform(X_train)
+        X_test_poly = poly_transformer.transform(X_test)
+        model = LinearRegression()
+        model.fit(X_train_poly, y_train)
 
+        # Predict on the test set
+        y_pred = model.predict(X_test_poly)
+
+        # Calculate evaluation metrics
+        mse = mean_squared_error(y_test, y_pred)
+        r2 = r2_score(y_test, y_pred)
+
+        print("mse :")
+        print(mse)
+        print("r2 :")
+        print(r2)
+        
+        sorted_data = pandas.DataFrame({'CPM': X_test['CPM'], 'CTR_pred': y_pred})
+        sorted_data = sorted_data.sort_values('CPM')
+
+        self.fig = plt.gca()
+        self.fig.clear()
+        
+        # Plot the polynomial regression fit using Seaborn
+        self.axs = seaborn.scatterplot(x=X_test['CPM'], y=y_test, label='True Values')
+        self.axs = seaborn.lineplot(x=sorted_data['CPM'], y=sorted_data['CTR_pred'], color='red', label='Polynomial Regression Fit')
+        plt.xlabel('CPM')
+        plt.ylabel('CTR')
+        plt.title('Polynomial Regression Fit')
+        plt.legend()
+        self.canvas.draw()
+        self.canvas.get_tk_widget().place(relx=0,rely=0.25,anchor='nw')
+        
+        #plt.show()
+        
     def __init__(self):
         #Metrics chosen for the graph
         self.grp_list = {}   #Dictionary of all the metrics that denominate the grouping parameter, along with their values
@@ -91,8 +132,6 @@ class Dash:
         self.grouping_metric.set("Platform")
         self.filter_metric = StringVar()  #The metric for filtering values
         self.filter_metric.set("Month")
-        self.x_metric = StringVar()
-        self.x_metric.set("Clicks")  #x_metric stores the metric name for the X axis (Tkinter object)
         self.y_metric = StringVar()
         self.y_metric.set("CTR")   #y_metric stores the metric name for the Y axis (Tkinter object)
         self.grp_metric = StringVar()   #Holds the name of one of the items chosen after grouping - Eg. Facebook
@@ -101,13 +140,11 @@ class Dash:
         self.filter_list.place(relx=0.5,rely=0.25,anchor='nw')
 
         self.metric_limits = limits_sheet.set_index('Campaign type').to_dict('index')
+
         #Divide the data into groups
         self.grouper()
         
-        #Tkinter dropdown setup
-        self.x_drop = OptionMenu(self.root, self.x_metric, *platform_metrics)   #Dropdown to select x metric
-        self.x_drop.place(relx=0.14,rely=0.1,anchor='w')
-        
+        #Tkinter dropdown setup        
         self.y_drop = OptionMenu(self.root, self.y_metric, *platform_metrics)   #Dropdown to select y metric
         self.y_drop.place(relx=0.14,rely=0.15,anchor='w')
         
@@ -122,9 +159,7 @@ class Dash:
 
         self.button_metrics=Button(self.root,text="Update metrics", command = self.tk_axis_val_update).place(relx=0.1,rely=0.2,anchor='w')#Buttons to update the grouping after selecting the parameters
         self.button_grouper=Button(self.root,text="Update grouping", command = self.grouper).place(relx=0.7,rely=0.05,anchor='w')
-        
-        self.labelx=Label(self.root, text="X axis : ")
-        self.labelx.place(relx=0.1,rely=0.1,anchor='w')
+        self.button_grouper=Button(self.root,text="Predict", command = self.model_predict).place(relx=0.7,rely=0.15,anchor='w')
         
         self.labely=Label(self.root, text="Y axis : ")
         self.labely.place(relx=0.1,rely=0.15,anchor='w')
@@ -139,11 +174,10 @@ class Dash:
         
         mplcursors.cursor(self.fig).connect("add", lambda sel: sel.annotation.set_text(self.annotation_maker(sel.index)))
         self.canvas = FigureCanvasTkAgg(self.fig.figure,master=self.root)
-
+        
     def tk_axis_val_update(self):
         
         #Update labels
-        self.labelx.config(text = "X axis : ")
         self.labely.config(text = "Y axis : ")
         self.label_grp.config(text = self.grouping_metric.get()+" : ")
 
@@ -159,6 +193,7 @@ class Dash:
             mplcursors.cursor(self.fig).connect("add", lambda sel: sel.annotation.set_text(self.annotation_maker(sel.index)))
         except:
             pass
+        
         self.canvas.draw()
         self.canvas.get_tk_widget().place(relx=0,rely=0.25,anchor='nw')
 
@@ -201,11 +236,17 @@ def calc_metrics():
     platform_sheet['CPC'] = (platform_sheet['Amount spent']/platform_sheet['Clicks'])
     
     platform_sheet['Campaign type'] = numpy.where(platform_sheet['Campaign name'].str.contains("AW"),"AW","PE")
-    platform_sheet['Platform']=platform_sheet['Platform']+"_"+platform_sheet['Campaign type']
-    platform_sheet['Month']=platform_sheet['Date'].str[0:7]
-    platform_sheet['Week']=lambda x: platform_sheet.index.get_level_values['Date']
-
-
+    platform_sheet['Platform'] = platform_sheet['Platform']+"_"+platform_sheet['Campaign type']
+    platform_sheet['Month'] = platform_sheet['Date'].str[0:7]
+    Month_num_list=platform_sheet['Month'].unique()
+    Month_num_list.sort()
+    month_num=1
+    Month_num_dict={}
+    for item in Month_num_list:
+        Month_num_dict[item]=month_num
+        month_num=month_num+1
+        
+    platform_sheet['Month_num']=platform_sheet['Month'].map(Month_num_dict)
     platform_metrics.append('CTR')
     platform_metrics.append('CPA')
     platform_metrics.append('CPM')

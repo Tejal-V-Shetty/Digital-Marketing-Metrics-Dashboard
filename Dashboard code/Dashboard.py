@@ -9,6 +9,7 @@ import json
 import seaborn
 import mplcursors
 from tkinter import *
+from tkinter import ttk
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 import sklearn
 
@@ -97,6 +98,12 @@ class Dash:
         #Metrics chosen for the graph
         self.grp_list = {}   #Dictionary of all the metrics that denominate the grouping parameter, along with their values
         self.root = Tk()
+        self.style_setter = ttk.Style(self.root)
+        print(self.style_setter.theme_names())
+        print(self.style_setter.theme_use())
+        self.style_setter.theme_use('classic')
+        print(self.style_setter.theme_use())
+        
         self.grouping_metric = StringVar()  #The metric for grouping values
         self.grouping_metric.set("Platform")
         self.filter_metric = StringVar()  #The metric for filtering values
@@ -165,8 +172,7 @@ class Dash:
         
         mplcursors.cursor(self.fig).connect("add", lambda sel: sel.annotation.set_text(self.annotation_maker(sel.index)))
         self.canvas = FigureCanvasTkAgg(self.fig.figure,master=self.root)
-        
-        
+
     def tk_axis_val_update(self):
         
         #Update labels
@@ -299,11 +305,25 @@ def calc_metrics():
 def main():
     global limits_sheet
     
-    data_entry("Facebook")
-    data_entry("Snapchat")
-    data_entry("Tiktok")
-    data_entry("GoogleAds")
-    
+    try:
+        data_entry("Facebook")        
+    except:
+        print("No Facebook data available.")
+
+    try:
+        data_entry("Snapchat")      
+    except:
+        print("No Snapchat data available.")
+
+    try:
+        data_entry("Tiktok")        
+    except:
+        print("No Tiktok data available.")
+
+    try:
+        data_entry("GoogleAds")
+    except:
+        print("No GoogleAds data available.")
     limits_sheet=pandas.read_excel("C:\\Users\\Tejal Shetty\\Documents\\Python programs\\Report Files\\Training data limits_FandB.xlsx")
     calc_metrics()
     excel_writer()
