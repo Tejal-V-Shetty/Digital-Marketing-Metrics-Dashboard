@@ -101,7 +101,7 @@ class Dash:
         self.style_setter = ttk.Style(self.root)
         print(self.style_setter.theme_names())
         print(self.style_setter.theme_use())
-        self.style_setter.theme_use('classic')
+        self.style_setter.theme_use('clam') #('winnative', 'clam', 'alt', 'default', 'classic', 'vista', 'xpnative')
         print(self.style_setter.theme_use())
         
         self.grouping_metric = StringVar()  #The metric for grouping values
@@ -114,6 +114,9 @@ class Dash:
         self.y_metric.set("CPA")   #y_metric stores the metric name for the Y axis (Tkinter object)
         self.grp_metric = StringVar()   #Holds the name of one of the items chosen after grouping - Eg. Facebook
 
+        self.background_frame = ttk.Frame(self.root)
+        self.background_frame.place(x=0, y=0, relwidth=1.0, relheight=1.0)
+        
         self.filter_list = Text(self.root,height=100,width=80)#Holds a list of all the values that can be seen after applying the filter
         self.filter_list.place(relx=0.5,rely=0.25,anchor='nw')
 
@@ -122,40 +125,41 @@ class Dash:
         self.grouper()
         
         #Tkinter dropdown setup
-        self.x_drop = OptionMenu(self.root, self.x_metric, *platform_metrics)   #Dropdown to select x metric
+        self.x_drop = ttk.OptionMenu(self.root, self.x_metric, *platform_metrics)   #Dropdown to select x metric
         self.x_drop.place(relx=0.14,rely=0.1,anchor='w')
         
-        self.y_drop = OptionMenu(self.root, self.y_metric, *platform_metrics)   #Dropdown to select y metric
+        self.y_drop = ttk.OptionMenu(self.root, self.y_metric, *platform_metrics)   #Dropdown to select y metric
         self.y_drop.place(relx=0.14,rely=0.15,anchor='w')
         
-        self.grouper_drop = OptionMenu(self.root, self.grouping_metric, *platform_filters)  #Dropdown to select grouping parameter - Eg. Platform, Campaign name
+        self.grouper_drop = ttk.OptionMenu(self.root, self.grouping_metric, *platform_filters)  #Dropdown to select grouping parameter - Eg. Platform, Campaign name
         self.grouper_drop.place(relx=0.6,rely=0.05,anchor='w')
 
-        self.filter_drop = OptionMenu(self.root, self.filter_metric, *platform_filters)  #Dropdown to select filter parameter - Eg. Platform, Campaign name
+        self.filter_drop = ttk.OptionMenu(self.root, self.filter_metric, *platform_filters)  #Dropdown to select filter parameter - Eg. Platform, Campaign name
         self.filter_drop.place(relx=0.6,rely=0.1,anchor='w')
 
-        self.grp_drop = OptionMenu(self.root, self.grp_metric, *grp_metric_list) #Dropdown to select option after grouping - Eg. Facebook, Snapchat
+        self.grp_drop = ttk.OptionMenu(self.root, self.grp_metric, *grp_metric_list) #Dropdown to select option after grouping - Eg. Facebook, Snapchat
         self.grp_drop.place(relx=0.14,rely=0.05,anchor='w')
 
-        self.button_metrics=Button(self.root,text="Update metrics", command = self.tk_axis_val_update).place(relx=0.1,rely=0.2,anchor='w')#Buttons to update the grouping after selecting the parameters
-        self.button_grouper=Button(self.root,text="Update grouping", command = self.grouper).place(relx=0.7,rely=0.05,anchor='w')
+        self.button_metrics = ttk.Button(self.root,text="Update metrics", command = self.tk_axis_val_update).place(relx=0.1,rely=0.2,anchor='w')#Buttons to update the grouping after selecting the parameters
+        self.button_grouper = ttk.Button(self.root,text="Update grouping", command = self.grouper).place(relx=0.7,rely=0.05,anchor='w')
 
-        self.button_gen_output=Button(self.root,text="Export general report", command = self.general_analysis_output).place(relx=0.8,rely=0.05,anchor='w')#Button to export reports
-        self.button_page_output=Button(self.root,text="Export report for this grouping", command = self.analysis_output).place(relx=0.8,rely=0.1,anchor='w')
+        self.button_gen_output = ttk.Button(self.root,text="Export general report", command = self.general_analysis_output).place(relx=0.8,rely=0.05,anchor='w')#Button to export reports
+        self.button_page_output = ttk.Button(self.root,text="Export report for this grouping", command = self.analysis_output).place(relx=0.8,rely=0.1,anchor='w')
         
-        self.labelx=Label(self.root, text="X axis : ")
+        self.labelx = ttk.Label(self.root, text="X axis : ")
         self.labelx.place(relx=0.1,rely=0.1,anchor='w')
         
-        self.labely=Label(self.root, text="Y axis : ")
+        self.labely = ttk.Label(self.root, text="Y axis : ")
         self.labely.place(relx=0.1,rely=0.15,anchor='w')
         
-        self.label_grp=Label(self.root, text=self.grouping_metric.get()+" : ")
+        self.label_grp = ttk.Label(self.root, text=self.grouping_metric.get()+" : ")
         self.label_grp.place(relx=0.1,rely=0.05,anchor='w')
         
         self.hover_metric="Campaign name"
 
         self.fig = plt.figure()
         self.axs = seaborn.scatterplot(data=self.grp_list[self.grp_metric.get()],x=self.x_metric.get(),y=self.y_metric.get())
+        
         try:    #Display limits for the selected metric along Y-axis as per pre-defined values
             self.axs.axhspan(0,self.metric_limits[self.grp_metric.get()][self.y_metric.get()+"_Lower"],facecolor=Limits_colour_list[self.y_metric.get()][0],alpha=0.3)
             self.axs.axhspan(self.metric_limits[self.grp_metric.get()][self.y_metric.get()+"_Lower"],self.metric_limits[self.grp_metric.get()][self.y_metric.get()+"_Upper"],facecolor=Limits_colour_list[self.y_metric.get()][1],alpha=0.3)
@@ -222,7 +226,7 @@ class Dash:
         self.root.mainloop()
 
     def analysis_output(self):
-        file_name='C:\\Users\\Tejal Shetty\\Documents\\Python programs\\Report files\\Analysis_output_'+datetime.datetime.now().strftime('%d-%m--%Hh%Mm')+'.xlsx'
+        file_name='C:\\Users\\Tejal\\Documents\\Datawrkz\\Python programs\\Report files\\Analysis_output_'+datetime.datetime.now().strftime('%d-%m--%Hh%Mm')+'.xlsx'
         with pandas.ExcelWriter(file_name) as writer:
             self.sorted_data.to_excel(writer, sheet_name = 'Consolidated data', index = False)     # Write the data into the excel sheet with sorted data
         print('\n\nWrite complete. Data stored in Analysis_output sheet.')
@@ -230,7 +234,7 @@ class Dash:
     def general_analysis_output(self):
         grp_placeholder=self.grouping_metric.get()  #Store parameters so as to return them to the original value
         filter_placeholder=self.filter_metric.get()
-        file_name='C:\\Users\\Tejal Shetty\\Documents\\Python programs\\Report files\\General_Analysis_'+datetime.datetime.now().strftime('%d-%m--%Hh%Mm')+'.xlsx'
+        file_name='C:\\Users\\Tejal\\Documents\\Datawrkz\\Python programs\\Report files\\General_Analysis_'+datetime.datetime.now().strftime('%d-%m--%Hh%Mm')+'.xlsx'
 
         with pandas.ExcelWriter(file_name) as writer:
             self.grouping_metric.set("Platform")
@@ -259,7 +263,7 @@ class Dash:
         self.grouper()
         
 def excel_writer():
-    with pandas.ExcelWriter('C:\\Users\\Tejal Shetty\\Documents\\Python programs\\Report files\\Dashboard_op.xlsx') as writer:
+    with pandas.ExcelWriter('C:\\Users\\Tejal\\Documents\\Datawrkz\\Python programs\\Report files\\Dashboard_op.xlsx') as writer:
         #pandas.DataFrame(FB_list).to_excel(writer, sheet_name='Platform data', index=False, header=False)
         main_sheet.to_excel(writer, sheet_name = 'Combined', index = False, header = False)
         sales_sheet.to_excel(writer, sheet_name = 'Sales', index = False, header = False)
@@ -270,7 +274,7 @@ def data_entry(Platform):
     global read_data
     global platform_sheet
     
-    path = f'C:\\Users\\Tejal Shetty\\Documents\\Python programs\\Report Files\\{platform_files[Platform]}.xlsx'
+    path = f'C:\\Users\\Tejal\\Documents\\Datawrkz\\Python programs\\Report files\\{platform_files[Platform]}.xlsx'
     read_data=pandas.read_excel(path)    # Read data from platform sheet
     
     for col in read_data.columns:
@@ -324,7 +328,7 @@ def main():
         data_entry("GoogleAds")
     except:
         print("No GoogleAds data available.")
-    limits_sheet=pandas.read_excel("C:\\Users\\Tejal Shetty\\Documents\\Python programs\\Report Files\\Training data limits_FandB.xlsx")
+    limits_sheet=pandas.read_excel("C:\\Users\\Tejal\\Documents\\Datawrkz\\Python programs\\Report files\\Training data limits_FandB.xlsx")
     calc_metrics()
     excel_writer()
     test = Dash()

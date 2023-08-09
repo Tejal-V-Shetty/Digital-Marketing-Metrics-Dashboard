@@ -80,9 +80,11 @@ class Dash:
         Annotation = self.grp_list[self.grp_metric.get()][self.filter_metric.get()][index]+"\n"+self.x_metric.get()+": "+str(self.grp_list[self.grp_metric.get()][self.x_metric.get()][index])+"\n"+self.y_metric.get()+": "+str(self.grp_list[self.grp_metric.get()][self.y_metric.get()][index])
         return Annotation
     
-    def model_predict(self,all_values):
+    def model_predict(self):
         X = self.grp_list[self.grp_metric.get()][[self.filter_metric.get()]]
         y = self.grp_list[self.grp_metric.get()][self.y_metric.get()]
+        print(X)
+        print(y)
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5)
         degree=6
         poly_transformer = PolynomialFeatures(degree=degree)
@@ -98,110 +100,36 @@ class Dash:
         mse = mean_squared_error(y_test, y_pred)
         r2 = r2_score(y_test, y_pred)
 
-        if all_values==0:
-            print("mse :")
-            print(mse)
-            print("r2 :")
-            print(r2)
+        print("mse :")
+        print(mse)
+        print("r2 :")
+        print(r2)
         
         sorted_data = pandas.DataFrame({self.filter_metric.get(): X_test[self.filter_metric.get()], self.y_metric.get()+'_pred': y_pred})
         sorted_data = sorted_data.sort_values(self.filter_metric.get())
 
         next_val=[numpy.array(X.max()+1)]
         next_val_poly = poly_transformer.transform(next_val)
+        print(X_test)
+        print(next_val_poly)
+        #next_val=numpy.array(numpy.repeat(X.max()+1,7,axis=1))
+        #shaped_val=next_val.reshape(-1,1)
         predicted_val = model.predict(next_val_poly)    #Predict the value for current month/week
-        if all_values==0:
-            print("Predicted value for current scenario : ")
-            print(predicted_val)
+        print("Predicted value for current scenario : ")
+        print(predicted_val)
         
-        # Plot the polynomial regression fit using Seaborn
-        line_color='green'
-        flag=1 #Model is assumed to have computed properly
-        if predicted_val<0 or predicted_val>max(y):
-            line_color='red'
-            flag=0
-        if all_values==0:    
-            self.axs = seaborn.scatterplot(x=X_test[self.filter_metric.get()], y=y_test, label='True Values', legend=None)
-            self.axs = seaborn.lineplot(x=sorted_data[self.filter_metric.get()], y=sorted_data[self.y_metric.get()+'_pred'], color=line_color, label='Polynomial Regression Fit',legend=None)
-            plt.xlabel(self.filter_metric.get())
-            plt.ylabel(self.y_metric.get())
-            plt.title('Polynomial Regression Fit')
-            #plt.legend()
-            self.canvas.draw()
-            self.canvas.get_tk_widget().place(relx=0,rely=0.25,anchor='nw')
-
-        return (predicted_val,flag)
-
-    def predictor(self):
         self.fig = plt.gca()
         self.fig.clear()
-        final_prediction_val=0
-        Limits_modifier_values={'CTR':0.25,
-                                'CPA':1,
-                                'CPM':1,
-                                'Amount spent':500,
-                                'CPC':0.2}
-        i=1
-        while i<=10:
-            (val,flag)=self.model_predict(0)
-            if flag: #If the computation was successful
-                final_prediction_val=final_prediction_val+val
-                i=i+1
-        final_prediction_val=final_prediction_val/10
-        print("Final prediction = ")
-        print(final_prediction_val)
         
-        if final_prediction_val<self.metric_limits[self.grp_metric.get()][self.y_metric.get()+"_Lower"]:    #If prediction is less than lower limit
-            self.metric_limits[self.grp_metric.get()][self.y_metric.get()+"_Lower"]=final_prediction_val[0]-Limits_modifier_values[self.y_metric.get()]
-        elif final_prediction_val>self.metric_limits[self.grp_metric.get()][self.y_metric.get()+"_Upper"]:  #If prediction is higher than upper limit
-            self.metric_limits[self.grp_metric.get()][self.y_metric.get()+"_Upper"]=final_prediction_val[0]+Limits_modifier_values[self.y_metric.get()]
-   
-        updated_limits=pandas.DataFrame.transpose(pandas.DataFrame.from_dict(self.metric_limits))
-        updated_limits.index.name="Campaign type"
-        print(updated_limits.index.name)
-        
-        with pandas.ExcelWriter('C:\\Users\\Tejal\\Documents\\Datawrkz\\Python programs\\Report files\\Training data limits_FandB.xlsx') as writer:
-            updated_limits.to_excel(writer)
-        print('\n\nWrite complete. Data stored in Training data limits_FandB.xlsx')
-
-    def predict_all(self):
-        default_y_metric=self.y_metric.get()    #Hold the selected value of y_metric
-        default_grp_metric=self.grp_metric.get()
-        Limits_modifier_values={'CTR':0.25,
-                                    'CPA':1,
-                                    'CPM':1,
-                                    'Amount spent':200,
-                                    'CPC':0.2}
-        for item in self.grp_list:
-            self.grp_metric.set(item)
-            for metric in platform_metrics:
-                final_prediction_val=0
-                self.y_metric.set(metric)
-                try:
-                    i=1
-                    while i<=10:
-                        (val,flag)=self.model_predict(1)
-                        if flag: #If the computation was successful
-                            final_prediction_val=final_prediction_val+val
-                            i=i+1
-                    final_prediction_val=final_prediction_val/10
-                    
-                    if final_prediction_val<self.metric_limits[self.grp_metric.get()][self.y_metric.get()+"_Lower"]:    #If prediction is less than lower limit
-                        self.metric_limits[self.grp_metric.get()][self.y_metric.get()+"_Lower"]=final_prediction_val[0]-Limits_modifier_values[self.y_metric.get()]
-                    elif final_prediction_val>self.metric_limits[self.grp_metric.get()][self.y_metric.get()+"_Upper"]:  #If prediction is higher than upper limit
-                        self.metric_limits[self.grp_metric.get()][self.y_metric.get()+"_Upper"]=final_prediction_val[0]+Limits_modifier_values[self.y_metric.get()]
-                except:
-                    print("Cannot update limits for "+self.y_metric.get())
-            
-        self.y_metric.set(default_y_metric)
-        self.grp_metric.set(default_grp_metric)
-        updated_limits=pandas.DataFrame.transpose(pandas.DataFrame.from_dict(self.metric_limits))
-        updated_limits.index.name="Campaign type"
-        print(updated_limits)
-        
-        with pandas.ExcelWriter('C:\\Users\\Tejal\\Documents\\Datawrkz\\Python programs\\Report files\\Training data limits_FandB.xlsx') as writer:
-            updated_limits.to_excel(writer)
-        print('\n\nWrite complete. All metrics updated. Data stored in Training data limits_FandB.xlsx')
+        # Plot the polynomial regression fit using Seaborn
+        self.axs = seaborn.scatterplot(x=X_test[self.filter_metric.get()], y=y_test, label='True Values')
+        self.axs = seaborn.lineplot(x=sorted_data[self.filter_metric.get()], y=sorted_data[self.y_metric.get()+'_pred'], color='red', label='Polynomial Regression Fit')
+        plt.xlabel(self.filter_metric.get())
+        plt.ylabel(self.y_metric.get())
+        plt.title('Polynomial Regression Fit')
+        plt.legend()
+        self.canvas.draw()
+        self.canvas.get_tk_widget().place(relx=0,rely=0.25,anchor='nw')
 
     def __init__(self):
         #Metrics chosen for the graph
@@ -239,17 +167,10 @@ class Dash:
 
         self.button_metrics=Button(self.root,text="Update metrics", command = self.tk_axis_val_update).place(relx=0.1,rely=0.2,anchor='w')#Buttons to update the grouping after selecting the parameters
         self.button_grouper=Button(self.root,text="Update grouping", command = self.grouper).place(relx=0.7,rely=0.05,anchor='w')
-        
         try:
-            self.button_grouper=Button(self.root,text="Predict", command = self.predictor).place(relx=0.7,rely=0.15,anchor='w')
+            self.button_grouper=Button(self.root,text="Predict", command = self.model_predict).place(relx=0.7,rely=0.15,anchor='w')
         except:
             print("Unable to form prediction model due to incomprehensible data.")
-                          
-        try:
-            self.button_grouper=Button(self.root,text="Predict all", command = self.predict_all).place(relx=0.7,rely=0.2,anchor='w')
-        except:
-            print("Unable to form prediction model due to incomprehensible data.")
-            
         self.labely=Label(self.root, text="Y axis : ")
         self.labely.place(relx=0.1,rely=0.15,anchor='w')
         
@@ -357,7 +278,7 @@ def calc_metrics():
     
 def main():
     global limits_sheet
-    limits_sheet=pandas.read_excel("C:\\Users\\Tejal\\Documents\\Datawrkz\\Python programs\\Report files\\Training data limits_FandB.xlsx")
+
     try:
         data_entry("Facebook")        
     except:
@@ -377,6 +298,7 @@ def main():
         data_entry("GoogleAds")
     except:
         print("No GoogleAds data available.")
+    limits_sheet=pandas.read_excel("C:\\Users\\Tejal\\Documents\\Datawrkz\\Python programs\\Report files\\Training data limits_FandB.xlsx")
     calc_metrics()
     test = Dash()
     test.graph_rep()
